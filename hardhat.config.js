@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 require("@nomicfoundation/hardhat-chai-matchers");
 require("@nomicfoundation/hardhat-network-helpers");
 require("@nomiclabs/hardhat-ethers");
@@ -9,6 +11,7 @@ require("hardhat-contract-sizer");
 // 可选：从环境变量获取API密钥（免费申请）
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
+const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY;
 
 // 检查是否启用Fork模式（需要API密钥）
 const ENABLE_FORK = ALCHEMY_API_KEY && ALCHEMY_API_KEY !== "YOUR-FREE-ALCHEMY-KEY";
@@ -32,12 +35,27 @@ module.exports = {
   },
 
   networks: {
-    // 🏠 本地开发网络 - 可选Fork主网
+    // 🧪 Sepolia测试网络 (主要开发和测试环境)
+    sepolia: {
+      url: `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+      accounts: SEPOLIA_PRIVATE_KEY ? [SEPOLIA_PRIVATE_KEY] : [],
+      chainId: 11155111,
+      gasPrice: 20000000000, // 20 gwei
+      gas: 6000000, // Gas限制
+      timeout: 60000, // 60秒超时
+      verify: {
+        etherscan: {
+          apiKey: ETHERSCAN_API_KEY
+        }
+      }
+    },
+
+    // 🏠 本地开发网络 (快速开发和单元测试)
     hardhat: {
       // 只有在有API密钥时才启用Fork
       ...(ENABLE_FORK ? {
         forking: {
-          url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
+          url: `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
           blockNumber: 18800000, // 固定区块号，确保一致性
         }
       } : {}),
@@ -54,24 +72,16 @@ module.exports = {
       }
     },
 
-    // 🚀 纯本地网络 (最快速度，不Fork)
+    // 🚀 纯本地网络 (备用本地环境)
     localhost: {
       url: "http://127.0.0.1:8545",
       chainId: 31337,
       // localhost 使用本地节点的账户，不需要配置 accounts
     },
 
-    // 🧪 测试网络 (最终测试用)
-    sepolia: {
-      url: `https://eth-sepolia.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
-      accounts: [], // 添加测试私钥时填入
-      chainId: 11155111,
-      gasPrice: 20000000000, // 20 gwei
-    },
-
     // 💎 主网 (生产部署 - 谨慎使用)
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
+      url: `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
       accounts: [], // 生产私钥严格管理
       chainId: 1,
       gasPrice: "auto",

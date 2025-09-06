@@ -9,14 +9,21 @@ async function main() {
   console.log("🔧 开始验证Hardhat开发环境...\n");
 
   try {
-    // 检查是否为本地模式
+    // 检查网络模式
     const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+    const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY;
     const isLocalMode = !ALCHEMY_API_KEY || ALCHEMY_API_KEY === "YOUR-FREE-ALCHEMY-KEY";
+    const isSepoliaMode = network.name === 'sepolia';
     
-    if (isLocalMode) {
-      console.log("🏠 本地开发模式 (无需API密钥)");
+    if (isSepoliaMode) {
+      console.log("🧪 Sepolia测试网络模式 (主要开发环境)");
+      if (!ALCHEMY_API_KEY || !SEPOLIA_PRIVATE_KEY) {
+        console.log("⚠️  警告: 缺少必要的环境变量");
+      }
+    } else if (isLocalMode) {
+      console.log("🏠 本地开发模式 (快速开发)");
     } else {
-      console.log("🍴 Fork主网模式 (使用Alchemy API)");
+      console.log("🍴 Fork主网模式 (高级测试)");
     }
 
     // 1. 验证网络配置
@@ -69,18 +76,28 @@ async function main() {
 
     console.log("\n🎉 环境验证完成! 所有配置正常.");
     
-    if (isLocalMode) {
+    if (isSepoliaMode) {
+      console.log("\n📋 Sepolia测试网络模式 - 下一步:");
+      console.log("  1. 运行 'npm run compile' 编译合约");
+      console.log("  2. 运行 'npm run test' 执行测试 (默认使用Sepolia)");
+      console.log("  3. 运行 'npm run deploy' 部署到Sepolia");
+      console.log("  4. 运行 'npm run verify' 验证合约");
+      console.log("\n💡 提示:");
+      console.log("  - 使用真实的Sepolia测试网络");
+      console.log("  - 确保账户有足够的测试ETH");
+      console.log("  - 可以在Sepolia Etherscan查看交易");
+    } else if (isLocalMode) {
       console.log("\n📋 本地开发模式 - 下一步:");
       console.log("  1. 运行 'npm run compile' 编译合约");
-      console.log("  2. 运行 'npm run test' 执行测试");
+      console.log("  2. 运行 'npm run test:local' 执行本地测试");
       console.log("  3. 开始开发第一个合约!");
       console.log("\n💡 提示:");
       console.log("  - 当前为纯本地模式，无需网络连接");
-      console.log("  - 如需Fork主网数据，请配置.env文件中的ALCHEMY_API_KEY");
+      console.log("  - 如需测试网部署，请配置.env文件");
     } else {
       console.log("\n📋 Fork模式 - 下一步:");
       console.log("  1. 运行 'npm run compile' 编译合约");
-      console.log("  2. 运行 'npm run test' 执行测试");
+      console.log("  2. 运行 'npm run test:local' 执行Fork测试");
       console.log("  3. 可以与真实主网协议交互测试!");
     }
 
@@ -89,10 +106,20 @@ async function main() {
     console.error(error.message);
     
     const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+    const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY;
     const isLocalMode = !ALCHEMY_API_KEY || ALCHEMY_API_KEY === "YOUR-FREE-ALCHEMY-KEY";
+    const isSepoliaMode = network.name === 'sepolia';
     
     console.log("\n🔧 可能的解决方案:");
-    if (isLocalMode) {
+    if (isSepoliaMode) {
+      console.log("  1. 检查 .env 文件配置:");
+      console.log("     - ALCHEMY_API_KEY (从 https://alchemy.com 获取)");
+      console.log("     - SEPOLIA_PRIVATE_KEY (测试账户私钥)");
+      console.log("     - ETHERSCAN_API_KEY (从 https://etherscan.io/apis 获取)");
+      console.log("  2. 确保测试账户有足够的Sepolia ETH");
+      console.log("  3. 从水龙头获取测试ETH: https://sepoliafaucet.com");
+      console.log("  4. 或者切换到本地模式: 'npm run test:local'");
+    } else if (isLocalMode) {
       console.log("  1. 运行 'npm install' 重新安装依赖");
       console.log("  2. 确保没有其他Hardhat进程运行");
       console.log("  3. 尝试运行 'npx hardhat compile' 直接测试");

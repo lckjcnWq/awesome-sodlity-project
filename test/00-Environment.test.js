@@ -10,26 +10,50 @@ describe("🔧 Environment Setup Tests", function () {
   
   before(function () {
     const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
-    const isLocalMode = !ALCHEMY_API_KEY || ALCHEMY_API_KEY === "YOUR-FREE-ALCHEMY-KEY";
-    console.log(`\n    📊 测试模式: ${isLocalMode ? '🏠 本地模式' : '🍴 Fork模式'}`);
+    const hasValidAPIKey = ALCHEMY_API_KEY && ALCHEMY_API_KEY !== "YOUR-FREE-ALCHEMY-KEY";
+    
+    let mode = '🏠 本地模式';
+    if (network.name === 'sepolia') {
+      mode = '🧪 Sepolia测试网';
+    } else if (hasValidAPIKey && network.name === 'hardhat') {
+      mode = '🍴 Fork模式';
+    }
+    
+    console.log(`\n    📊 测试模式: ${mode}`);
   });
 
   describe("Network Configuration", function () {
     it("should have correct network name", async function () {
-      expect(network.name).to.be.oneOf(["hardhat", "localhost"]);
+      expect(network.name).to.be.oneOf(["hardhat", "localhost", "sepolia"]);
     });
 
     it("should have sufficient test accounts", async function () {
       const accounts = await ethers.getSigners();
-      expect(accounts.length).to.be.at.least(10);
+      
+      if (network.name === 'sepolia') {
+        // Sepolia: 至少1个账户 (来自私钥)
+        expect(accounts.length).to.be.at.least(1);
+        console.log(`    ℹ️  Sepolia账户数: ${accounts.length}`);
+      } else {
+        // 本地/Fork: 至少10个账户
+        expect(accounts.length).to.be.at.least(10);
+      }
     });
 
     it("should have accounts with sufficient ETH balance", async function () {
       const accounts = await ethers.getSigners();
       
-      for (let i = 0; i < 3; i++) {
-        const balance = await accounts[i].getBalance();
-        expect(balance).to.be.above(ethers.utils.parseEther("1000"));
+      if (network.name === 'sepolia') {
+        // Sepolia: 检查第一个账户有基本余额 (0.01+ ETH)
+        const balance = await accounts[0].getBalance();
+        expect(balance).to.be.above(ethers.utils.parseEther("0.01"));
+        console.log(`    ℹ️  账户余额: ${ethers.utils.formatEther(balance)} ETH`);
+      } else {
+        // 本地/Fork: 检查前3个账户每个都有1000+ ETH
+        for (let i = 0; i < 3; i++) {
+          const balance = await accounts[i].getBalance();
+          expect(balance).to.be.above(ethers.utils.parseEther("1000"));
+        }
       }
     });
   });
@@ -73,20 +97,39 @@ describe("🔧 Environment Setup Tests", function () {
 
   describe("Gas and Transaction Testing", function () {
     it("should estimate gas for simple transaction", async function () {
-      const [sender, receiver] = await ethers.getSigners();
+      const [sender] = await ethers.getSigners();
+      const accounts = await ethers.getSigners();
+      
+      let targetAddress;
+      if (network.name === 'sepolia') {
+        // Sepolia: 使用固定地址避免真实转账
+        targetAddress = "0x0000000000000000000000000000000000000001";
+      } else {
+        // 本地: 使用第二个账户
+        targetAddress = accounts[1].address;
+      }
       
       const gasEstimate = await sender.estimateGas({
-        to: receiver.address,
-        value: ethers.utils.parseEther("1.0")
+        to: targetAddress,
+        value: ethers.utils.parseEther(network.name === 'sepolia' ? "0.001" : "1.0")
       });
       
       expect(gasEstimate).to.be.above(0);
       expect(gasEstimate).to.be.below(100000); // 应该远低于10万gas
+      console.log(`    ℹ️  Gas估算: ${gasEstimate}`);
     });
 
     it("should execute simple ETH transfer", async function () {
-      const [sender, receiver] = await ethers.getSigners();
+      const accounts = await ethers.getSigners();
       
+      if (network.name === 'sepolia') {
+        console.log(`    ℹ️  Sepolia真实网络 - 跳过转账测试 (避免消耗真实ETH)`);
+        this.skip();
+        return;
+      }
+      
+      // 仅在本地网络执行真实转账
+      const [sender, receiver] = accounts;
       const initialBalance = await receiver.getBalance();
       
       await sender.sendTransaction({
@@ -105,7 +148,13 @@ describe("🔧 Environment Setup Tests", function () {
       expect(initialTime).to.be.a('number');
       expect(initialTime).to.be.above(0);
       
-      // 增加1小时
+      if (network.name === 'sepolia') {
+        console.log(`    ℹ️  Sepolia真实网络 - 跳过时间操作测试`);
+        this.skip();
+        return;
+      }
+      
+      // 增加1小时 (仅本地网络)
       await ethers.provider.send("evm_increaseTime", [3600]);
       await ethers.provider.send("evm_mine", []);
       
@@ -116,7 +165,13 @@ describe("🔧 Environment Setup Tests", function () {
 
     it("should be able to mine blocks", async function () {
       const initialBlock = await ethers.provider.getBlockNumber();
-      expect(initialBlock).to.be.at.least(0); // 可能从0开始
+      expect(initialBlock).to.be.at.least(0);
+      
+      if (network.name === 'sepolia') {
+        console.log(`    ℹ️  Sepolia真实网络 - 跳过挖矿测试`);
+        this.skip();
+        return;
+      }
       
       await ethers.provider.send("evm_mine", []);
       
@@ -127,11 +182,35 @@ describe("🔧 Environment Setup Tests", function () {
   });
 
   describe("Network Mode Verification", function () {
-    it("should work in local mode without API keys", async function () {
+    it("should work in the current network mode", async function () {
       const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
-      const isLocalMode = !ALCHEMY_API_KEY || ALCHEMY_API_KEY === "YOUR-FREE-ALCHEMY-KEY";
+      const hasValidAPIKey = ALCHEMY_API_KEY && ALCHEMY_API_KEY !== "YOUR-FREE-ALCHEMY-KEY";
       
-      if (isLocalMode) {
+      if (network.name === 'sepolia') {
+        console.log("    ℹ️  Sepolia模式验证 - 真实测试网");
+        
+        // 验证Sepolia网络功能
+        const blockNumber = await ethers.provider.getBlockNumber();
+        expect(blockNumber).to.be.above(1000000); // Sepolia应该有很多区块
+        
+        const chainId = await ethers.provider.getNetwork();
+        expect(chainId.chainId).to.equal(11155111); // Sepolia Chain ID
+        
+        console.log(`    ℹ️  Sepolia区块高度: ${blockNumber}, Chain ID: ${chainId.chainId}`);
+        
+      } else if (hasValidAPIKey && network.name === 'hardhat' && network.config.forking) {
+        console.log("    ℹ️  Fork模式验证 - 使用Alchemy API");
+        
+        // 测试是否能获取主网的知名地址余额
+        const vitalikAddress = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+        const balance = await ethers.provider.getBalance(vitalikAddress);
+        
+        // Vitalik应该有一些ETH余额
+        expect(balance).to.be.above(0);
+        
+        console.log(`    ℹ️  Fork验证成功 - Vitalik余额: ${ethers.utils.formatEther(balance)} ETH`);
+        
+      } else {
         console.log("    ℹ️  本地模式验证 - 无需API密钥");
         
         // 验证本地网络基本功能
@@ -139,19 +218,6 @@ describe("🔧 Environment Setup Tests", function () {
         expect(blockNumber).to.be.at.least(0);
         
         console.log(`    ℹ️  本地区块高度: ${blockNumber}`);
-      } else {
-        console.log("    ℹ️  Fork模式验证 - 使用Alchemy API");
-        
-        if (network.name === "hardhat" && network.config.forking) {
-          // 测试是否能获取主网的知名地址余额
-          const vitalikAddress = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-          const balance = await ethers.provider.getBalance(vitalikAddress);
-          
-          // Vitalik应该有一些ETH余额
-          expect(balance).to.be.above(0);
-          
-          console.log(`    ℹ️  Fork验证成功 - Vitalik余额: ${ethers.utils.formatEther(balance)} ETH`);
-        }
       }
     });
   });

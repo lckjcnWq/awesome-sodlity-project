@@ -54,3 +54,5 @@ cache/
 .env.backup
 .env
 node_modules
+# 加密钱包文件
+.wallet.encrypted

@@ -11,17 +11,29 @@
     "check-node": "node scripts/check-node-version.js",
     "precompile": "npm run check-node",
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "test": "hardhat test --network sepolia",
+    "test:local": "hardhat test --network hardhat",
     "test:coverage": "hardhat coverage",
-    "test:gas": "REPORT_GAS=true hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test --network sepolia",
+    "test:gas:local": "REPORT_GAS=true hardhat test --network hardhat",
     "node": "hardhat node",
-    "deploy:local": "hardhat run scripts/deploy-local.js --network localhost",
-    "deploy:hardhat": "hardhat run scripts/deploy-local.js --network hardhat",
+    "node:fork": "hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/$ALCHEMY_API_KEY",
+    "deploy": "hardhat deploy --network sepolia",
+    "deploy:sepolia": "hardhat deploy --network sepolia",
+    "deploy:local": "hardhat deploy --network localhost",
+    "deploy:hardhat": "hardhat deploy --network hardhat",
+    "verify": "hardhat verify --network sepolia",
+    "verify:sepolia": "hardhat verify --network sepolia",
     "clean": "hardhat clean",
     "size": "hardhat size-contracts",
     "lint": "solhint 'contracts/**/*.sol'",
     "format": "prettier --write 'contracts/**/*.sol'",
-    "env:verify": "node scripts/verify-environment.js"
+    "env:verify": "node scripts/verify-environment.js",
+    "env:verify:sepolia": "node scripts/verify-environment.js --network sepolia",
+    "wallet:encrypt": "node scripts/crypto-wallet.js encrypt",
+    "wallet:decrypt": "node scripts/crypto-wallet.js decrypt",
+    "wallet:test": "node scripts/crypto-wallet.js test",
+    "wallet:backup": "node scripts/crypto-wallet.js backup"
   },
   "keywords": [
     "solidity",
@@ -56,6 +68,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.3",
     "@openzeppelin/contracts-upgradeable": "^4.9.3",
+    "dotenv": "^17.2.2",
     "hardhat-diamond-abi": "^3.0.1"
   }
 }
